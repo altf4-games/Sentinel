@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Classification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        #output {
+            margin-top: 20px;
+        }
+
+        .result {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Text Classification</h1>
+    <textarea id="textInput" rows="4" cols="50" placeholder="Enter your complaint or text here..."></textarea><br><br>
+    <button onclick="classifyText()">Classify Text</button>
+
+    <div id="output"></div>
+
+    <script>
+        async function classifyText() {
+            const text = document.getElementById("textInput").value;
+            const response = await fetch("http://127.0.0.1:8000/classify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: text })
+            });
+            const result = await response.json();
+            displayResult(result);
+        }
+
+        function displayResult(result) {
+            const outputDiv = document.getElementById("output");
+            outputDiv.innerHTML = `
+                <div class="result"><strong>Predicted Category:</strong> ${result.predicted_category}</div>
+                <div class="result"><strong>Confidence Score:</strong> ${result.confidence_score}</div>
+                <div class="result"><strong>All Scores:</strong> ${JSON.stringify(result.all_scores, null, 2)}</div>
+                <div class="result"><strong>Features:</strong> ${JSON.stringify(result.features, null, 2)}</div>
+                <div class="result"><strong>Victim Type:</strong> ${result.victim_type.join(', ')}</div>
+                <div class="result"><strong>Gender:</strong> ${result.gender}</div>
+            `;
+        }
+    </script>
+</body>
+
+</html>
