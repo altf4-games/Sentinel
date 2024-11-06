@@ -1,11 +1,12 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import requests
 import torch
 import numpy as np
 import re
 import json
-from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
+from transformers import DistilBertTokenizer, DistilBertForSequenceClassification, pipeline
 import torch.nn.functional as F
 
 # Initialize FastAPI app
@@ -31,6 +32,9 @@ model.eval()
 # Load category mapping from JSON
 with open(f"{model_path}/category_mapping.json", "r") as f:
     category_mapping = json.load(f)
+
+# Load sentiment analysis pipeline
+sentiment_analyzer = pipeline("sentiment-analysis")
 
 # Helper functions
 def detect_victim_type(text):
@@ -58,15 +62,8 @@ def extract_features(text):
         'has_numbers': bool(re.search(r'\d', text)),
     }
 
-# Input data model
-class TextInput(BaseModel):
-    text: str
-
-# Classification endpoint
-@app.post("/classify")
-async def classify_text(input: TextInput):
-    text = input.text
-
+# Helper function for text classification
+async def classify_text(text: str):
     # Tokenize and classify
     inputs = tokenizer(text, return_tensors="pt", truncation=True, padding="max_length", max_length=128)
     inputs = {key: value.to(device) for key, value in inputs.items()}
@@ -77,32 +74,65 @@ async def classify_text(input: TextInput):
     # Softmax to get probabilities
     probs = F.softmax(logits, dim=-1).cpu().numpy().flatten()
     top_category_idx = np.argmax(probs)
-    
-    # Reverse mapping to find category name by index
     top_category_label = {v: k for k, v in category_mapping.items()}.get(top_category_idx, "Unknown")
     confidence_score = probs[top_category_idx]
 
-    # Debugging output to ensure correct mappings
-    print("Logits:", logits)
-    print("Probabilities:", probs)
-    print("Top category index:", top_category_idx)
-    print("Predicted category:", top_category_label)
-    print("Confidence score:", confidence_score)
+    # Sentiment analysis
+    sentiment_result = sentiment_analyzer(text)
+    sentiment_label = sentiment_result[0]["label"]
+    sentiment_score = sentiment_result[0]["score"]
 
-    # Extract features
+    # Extract features, victim type, gender, etc.
     extracted_features = extract_features(text)
     victim_type = detect_victim_type(text)
     gender = detect_gender(text)
 
-    # Prepare JSON response
     return {
         "predicted_category": top_category_label,
         "confidence_score": round(float(confidence_score), 2),
         "all_scores": {cat: round(float(probs[idx]), 2) for cat, idx in category_mapping.items()},
         "features": extracted_features,
         "victim_type": victim_type,
-        "gender": gender
+        "gender": gender,
+        "sentiment": {
+            "label": sentiment_label,
+            "score": round(sentiment_score, 2)
+        }
     }
 
-# To run the app, use the command:
-# uvicorn app:app --reload
+# Endpoint to classify plain text
+class TextInput(BaseModel):
+    text: str
+
+@app.post("/classify")
+async def classify(input: TextInput):
+    return await classify_text(input.text)
+
+# OCR endpoint that calls /classify after extracting text
+@app.post("/ocr")
+async def ocr_and_classify(file: UploadFile = File(...)):
+    ocr_api_url = "https://api.ocr.space/parse/image"
+    payload = {
+        'apikey': 'K83989354488957', # The API key is provided for easier testing, will be removed in production
+        'isOverlayRequired': False,
+        'language': 'eng'
+    }
+    files = {'file': (file.filename, await file.read(), file.content_type)}
+    
+    # Call the OCR API
+    response = requests.post(ocr_api_url, files=files, data=payload)
+    if response.status_code != 200:
+        raise HTTPException(status_code=response.status_code, detail="OCR failed")
+    
+    # Parse OCR result
+    result = response.json()
+    if result.get("IsErroredOnProcessing", True):
+        raise HTTPException(status_code=500, detail="Error processing image")
+
+    ocr_text = result.get("ParsedResults")[0].get("ParsedText")
+    if not ocr_text:
+        raise HTTPException(status_code=400, detail="No text extracted from image")
+
+    # Pass extracted text to classify function
+    classification_result = await classify_text(ocr_text)
+    return classification_result

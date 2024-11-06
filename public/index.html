@@ -23,11 +23,18 @@
 
     <div class="container">
         <h1>Text Classification</h1>
-        <p class="intro-text">Enter your text below</p>
+        <p class="intro-text">Enter your text or upload an image below</p>
 
         <div class="input-section">
             <textarea id="textInput" rows="5" placeholder="Type your complaint or text here..."></textarea>
-            <button onclick="classifyText()">Classify Text</button>
+
+            <!-- Button Group with styled file input -->
+            <div class="button-group">
+                <button class="btn classify-btn" onclick="classifyText()">Classify Text</button>
+                <label for="ocrImageInput" class="file-label">Choose Image</label>
+                <input type="file" id="ocrImageInput" accept="image/*" class="file-input">
+                <button class="btn ocr-btn" onclick="classifyOCRImage()">Classify from OCR</button>
+            </div>
         </div>
 
         <div id="output" class="output-section"></div>
@@ -50,16 +57,47 @@
             displayResult(result);
         }
 
+        async function classifyOCRImage() {
+            const imageFile = document.getElementById("ocrImageInput").files[0];
+            if (!imageFile) {
+                alert("Please choose an image file before pressing Classify from OCR.");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("file", imageFile);
+
+            const response = await fetch("http://127.0.0.1:8000/ocr", {
+                method: "POST",
+                body: formData
+            });
+
+            const result = await response.json();
+            displayResult(result);
+        }
+
         function displayResult(result) {
             const outputDiv = document.getElementById("output");
             outputDiv.innerHTML = `
-                <div class="result"><strong>Predicted Category:</strong> ${result.predicted_category}</div>
-                <div class="result"><strong>Confidence Score:</strong> ${result.confidence_score}</div>
-                <div class="result"><strong>Features:</strong><br>
+                <div class="result">
+                    <strong>Predicted Category:</strong> ${result.predicted_category}
+                </div>
+                <div class="result">
+                    <strong>Confidence Score:</strong> ${result.confidence_score}
+                </div>
+                <div class="result">
+                    <strong>Features:</strong><br>
                     ${Object.keys(result.features).map(key => `${key}: ${result.features[key]}<br>`).join('')}
-               </div>
-                <div class="result"><strong>Victim Type:</strong> ${result.victim_type.join(', ')}</div>
-                <div class="result"><strong>Gender:</strong> ${result.gender}</div>
+                </div>
+                <div class="result">
+                    <strong>Victim Type:</strong> ${result.victim_type.join(', ')}
+                </div>
+                <div class="result">
+                    <strong>Gender:</strong> ${result.gender}
+                </div>
+                <div class="result">
+                    <strong>Sentiment:</strong> ${result.sentiment.label} (${result.sentiment.score})
+                </div>
             `;
         }
     </script>
