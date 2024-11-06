@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Text Classification</title>
+    <title>Sentinel</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -12,7 +12,7 @@
     <!-- Navbar -->
     <nav class="navbar">
         <div class="navbar-container">
-            <a href="#" class="logo">TextClassifier</a>
+            <a href="#" class="logo">Sentinel</a>
             <ul class="nav-links">
                 <li><a href="#">Home</a></li>
                 <li><a href="#">About</a></li>
@@ -23,7 +23,7 @@
 
     <div class="container">
         <h1>Text Classification</h1>
-        <p class="intro-text">Enter your text below, and our model will classify it into relevant categories, providing a confidence score and additional insights.</p>
+        <p class="intro-text">Enter your text below</p>
 
         <div class="input-section">
             <textarea id="textInput" rows="5" placeholder="Type your complaint or text here..."></textarea>
@@ -35,7 +35,7 @@
 
     <!-- Footer -->
     <footer class="footer">
-        <p>&copy; 2024 TextClassifier. All rights reserved.</p>
+        <p>&copy; 2024 Sentinel. All rights reserved.</p>
     </footer>
 
     <script>
@@ -55,8 +55,9 @@
             outputDiv.innerHTML = `
                 <div class="result"><strong>Predicted Category:</strong> ${result.predicted_category}</div>
                 <div class="result"><strong>Confidence Score:</strong> ${result.confidence_score}</div>
-                <div class="result"><strong>All Scores:</strong> ${JSON.stringify(result.all_scores, null, 2)}</div>
-                <div class="result"><strong>Features:</strong> ${JSON.stringify(result.features, null, 2)}</div>
+                <div class="result"><strong>Features:</strong><br>
+                    ${Object.keys(result.features).map(key => `${key}: ${result.features[key]}<br>`).join('')}
+               </div>
                 <div class="result"><strong>Victim Type:</strong> ${result.victim_type.join(', ')}</div>
                 <div class="result"><strong>Gender:</strong> ${result.gender}</div>
             `;

@@ -4,12 +4,14 @@ from pydantic import BaseModel
 import torch
 import numpy as np
 import re
+import json
 from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
 import torch.nn.functional as F
 
 # Initialize FastAPI app
 app = FastAPI()
 
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,20 +28,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 model.eval()
 
-# Updated category mapping to handle additional categories
-category_mapping = {
-    0: 'Financial Fraud', 
-    1: 'Identity Theft',
-    2: 'Phishing Scam',
-    3: 'Ransomware Attack',
-    4: 'Social Media Fraud',
-    5: 'Cryptocurrency Scam',
-    6: 'Ecommerce Fraud',
-    7: 'Banking Fraud',
-    8: 'Other' 
-}
+# Load category mapping from JSON
+with open(f"{model_path}/category_mapping.json", "r") as f:
+    category_mapping = json.load(f)
 
-# Detect victim type and gender functions
+# Helper functions
 def detect_victim_type(text):
     victim_keywords = {
         'individual': r'\b(I|me|my|individual|person)\b',
@@ -80,21 +73,32 @@ async def classify_text(input: TextInput):
     with torch.no_grad():
         outputs = model(**inputs)
         logits = outputs.logits
+
+    # Softmax to get probabilities
     probs = F.softmax(logits, dim=-1).cpu().numpy().flatten()
     top_category_idx = np.argmax(probs)
-    top_category_label = category_mapping.get(top_category_idx, "Unknown")
+    
+    # Reverse mapping to find category name by index
+    top_category_label = {v: k for k, v in category_mapping.items()}.get(top_category_idx, "Unknown")
     confidence_score = probs[top_category_idx]
+
+    # Debugging output to ensure correct mappings
+    print("Logits:", logits)
+    print("Probabilities:", probs)
+    print("Top category index:", top_category_idx)
+    print("Predicted category:", top_category_label)
+    print("Confidence score:", confidence_score)
 
     # Extract features
     extracted_features = extract_features(text)
     victim_type = detect_victim_type(text)
     gender = detect_gender(text)
 
-    # Return JSON response
+    # Prepare JSON response
     return {
         "predicted_category": top_category_label,
         "confidence_score": round(float(confidence_score), 2),
-        "all_scores": {category_mapping.get(i, "Unknown"): round(float(probs[i]), 2) for i in range(len(probs))},
+        "all_scores": {cat: round(float(probs[idx]), 2) for cat, idx in category_mapping.items()},
         "features": extracted_features,
         "victim_type": victim_type,
         "gender": gender
