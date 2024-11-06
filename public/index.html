@@ -16,7 +16,6 @@
             <ul class="nav-links">
                 <li><a href="#">Home</a></li>
                 <li><a href="#">About</a></li>
-                <li><a href="#">Contact</a></li>
             </ul>
         </div>
     </nav>
@@ -93,12 +92,32 @@
                     <strong>Victim Type:</strong> ${result.victim_type.join(', ')}
                 </div>
                 <div class="result">
-                    <strong>Gender:</strong> ${result.gender}
-                </div>
-                <div class="result">
                     <strong>Sentiment:</strong> ${result.sentiment.label} (${result.sentiment.score})
                 </div>
+                ${renderSensitiveData(result.sensitive_data)}
             `;
+        }
+
+        function renderSensitiveData(sensitiveData) {
+            let sensitiveInfoHTML = '';
+
+            if (sensitiveData.upi_ids && sensitiveData.upi_ids.length > 0) {
+                sensitiveInfoHTML += `<div class="result"><strong>UPI IDs:</strong> ${sensitiveData.upi_ids.join(', ')}</div>`;
+            }
+            if (sensitiveData.phone_numbers && sensitiveData.phone_numbers.length > 0) {
+                sensitiveInfoHTML += `<div class="result"><strong>Phone Numbers:</strong> ${sensitiveData.phone_numbers.join(', ')}</div>`;
+            }
+            if (sensitiveData.emails && sensitiveData.emails.length > 0) {
+                sensitiveInfoHTML += `<div class="result"><strong>Emails:</strong> ${sensitiveData.emails.join(', ')}</div>`;
+            }
+            if (sensitiveData.other_numbers && sensitiveData.other_numbers.length > 0) {
+                sensitiveInfoHTML += `<div class="result"><strong>Other Numbers:</strong> ${sensitiveData.other_numbers.join(', ')}</div>`;
+            }
+            if (sensitiveData.websites && sensitiveData.websites.length > 0) {
+                sensitiveInfoHTML += `<div class="result"><strong>Websites:</strong> ${sensitiveData.websites.join(', ')}</div>`;
+            }
+
+            return sensitiveInfoHTML ? `<div class="result"><strong>Sensitive Information:</strong><br>${sensitiveInfoHTML}</div>` : '';
         }
     </script>
 </body>

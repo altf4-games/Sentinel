@@ -46,12 +46,19 @@ def detect_victim_type(text):
     }
     return [label for label, pattern in victim_keywords.items() if re.search(pattern, text.lower())] or ["unknown"]
 
-def detect_gender(text):
-    if re.search(r'\b(she|her)\b', text.lower()):
-        return "female"
-    elif re.search(r'\b(he|his)\b', text.lower()):
-        return "male"
-    return "unknown"
+def extract_sensitive_data(text):
+    # Refined patterns for sensitive information
+    patterns = {
+        "upi_ids": r'\b[\w.-]+@[a-zA-Z]+\b',  # UPI ID typically has a format like "username@bankname"
+        "emails": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',  # Standard email format
+        "phone_numbers": r'\b(?:\+91[-\s]?)?[6-9]\d{9}\b',  # Indian phone numbers with optional country code
+        "websites": r'\b(?:https?://)?(?:www\.)?[a-zA-Z0-9-]+\.(?:com|org|net|in|edu|gov|co|info|biz|me|io|tech)\b',  # Common website formats
+        "other_numbers": r'\b\d{6,16}\b'  # Other numbers, such as IDs or account numbers, between 6 to 16 digits
+    }
+    
+    # Using regex to find all matches
+    sensitive_data = {key: re.findall(pattern, text) for key, pattern in patterns.items()}
+    return sensitive_data
 
 def extract_features(text):
     return {
@@ -82,10 +89,10 @@ async def classify_text(text: str):
     sentiment_label = sentiment_result[0]["label"]
     sentiment_score = sentiment_result[0]["score"]
 
-    # Extract features, victim type, gender, etc.
+    # Extract features, victim type, sensitive data, etc.
     extracted_features = extract_features(text)
     victim_type = detect_victim_type(text)
-    gender = detect_gender(text)
+    sensitive_data = extract_sensitive_data(text)
 
     return {
         "predicted_category": top_category_label,
@@ -93,7 +100,7 @@ async def classify_text(text: str):
         "all_scores": {cat: round(float(probs[idx]), 2) for cat, idx in category_mapping.items()},
         "features": extracted_features,
         "victim_type": victim_type,
-        "gender": gender,
+        "sensitive_data": sensitive_data,
         "sentiment": {
             "label": sentiment_label,
             "score": round(sentiment_score, 2)
