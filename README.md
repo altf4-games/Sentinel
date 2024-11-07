@@ -36,7 +36,7 @@ pip install uvicorn fastapi requests torch transformers numpy pandas python-mult
 Once dependencies are installed, start the FastAPI backend using uvicorn:
 
 ```bash
-python -m uvicorn main:app --reload
+python -m uvicorn app:app --reload
 ```
 
 This will start the server at http://127.0.0.1:8000.
