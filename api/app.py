@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import requests
 import torch
@@ -111,6 +112,11 @@ async def classify_text(text: str):
 class TextInput(BaseModel):
     text: str
 
+# Serve the HTML file for the frontend
+@app.get("/")
+async def serve_frontend():
+    return FileResponse("../public/index.html") 
+
 @app.post("/classify")
 async def classify(input: TextInput):
     return await classify_text(input.text)
@@ -143,3 +149,6 @@ async def ocr_and_classify(file: UploadFile = File(...)):
     # Pass extracted text to classify function
     classification_result = await classify_text(ocr_text)
     return classification_result
+
+# Run the uvicorn server
+# python -m uvicorn app:app --reload
